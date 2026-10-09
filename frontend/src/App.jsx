@@ -224,7 +224,7 @@ function JudgeBriefModal({ isOpen, onClose }) {
           <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#38bdf8', marginBottom: 4 }}>🎯 The Core Innovation</h4>
           <p style={{ fontSize: '0.8rem', color: '#e2e8f0', lineHeight: 1.5 }}>
             Existing air quality apps only display passive numbers (e.g. <em>"AQI is 380"</em>), leaving school principals guessing.
-            <strong> VayuGuard is an active AI orchestrator</strong>: it ingests live sensor feeds, forecasts boundary-layer diurnal smog spikes, and uses <strong>Amazon Bedrock (Claude 3.5 Sonnet)</strong> to intelligently re-sequence the school timetable into safe indoor/filtered slots before classes begin.
+            <strong> VayuGuard is an active AI orchestrator</strong>: it ingests live sensor feeds, forecasts boundary-layer diurnal smog spikes, and uses <strong>Amazon Bedrock</strong> (with a deterministic safety-rule fallback when Bedrock is unavailable) to intelligently re-sequence the school timetable into safe indoor/filtered slots before classes begin.
           </p>
         </div>
 
@@ -233,10 +233,10 @@ function JudgeBriefModal({ isOpen, onClose }) {
           <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f8fafc', marginBottom: 10 }}>⚡ AWS Cloud Architecture</h4>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
             {[
-              { svc: 'Amazon Bedrock', role: 'Claude 3.5 Sonnet pediatric reasoning & timetable optimization', icon: <Cpu size={16} color="#38bdf8" /> },
+              { svc: 'Amazon Bedrock', role: 'Pediatric reasoning & timetable optimization (Nova Lite, model-agnostic)', icon: <Cpu size={16} color="#38bdf8" /> },
               { svc: 'AWS Lambda', role: 'EventBridge-triggered ingestion and forecast pipeline', icon: <Layers size={16} color="#f59e0b" /> },
-              { svc: 'Amazon DynamoDB', role: 'Telemetry store for historical diurnal inversion models', icon: <Database size={16} color="#10b981" /> },
-              { svc: 'Amazon SNS', role: 'Sub-second bilingual WhatsApp/SMS notification broadcast', icon: <Send size={16} color="#ec4899" /> },
+              { svc: 'Amazon DynamoDB', role: 'Live telemetry store for historical AQI readings', icon: <Database size={16} color="#10b981" /> },
+              { svc: 'Amazon SNS', role: 'Real-time alert broadcast to subscribed staff/parents', icon: <Send size={16} color="#ec4899" /> },
             ].map((item, idx) => (
               <div key={idx} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-glass)', borderRadius: 8, padding: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontWeight: 700, fontSize: '0.8rem', marginBottom: 4 }}>
@@ -756,7 +756,7 @@ export default function App() {
     { hour_offset: 6, time: "15:00", predicted_aqi: 210, status: "Moderate" },
   ]);
   const [optimization, setOptimization] = useState({
-    engine: "Amazon Bedrock (Claude 3.5 Sonnet)",
+    engine: "Deterministic Safety Engine (Local Fallback)",
     summary: { modifications_count: 3, total_avoided_outdoor_minutes: 115, student_hours_protected: 1629.2, estimated_pm25_inhalation_avoided_grams: 5.24 },
     advisory_cards: {
       admin: "High PM2.5 Inversion detected during noon periods. PE & Recess activities rerouted to Indoor Multi-Purpose Hall.",
@@ -1129,7 +1129,7 @@ export default function App() {
                 background: optimization.live_ai ? 'rgba(16,185,129,0.15)' : 'rgba(56,189,248,0.15)',
                 color: optimization.live_ai ? '#86efac' : '#38bdf8'
               }}>
-                {optimization.live_ai ? "⚡ Live Bedrock (Claude 3.5)" : "🛡️ Local Safety Rules"}
+                {optimization.live_ai ? `⚡ ${optimization.engine || "Live Bedrock"}` : "🛡️ Local Safety Rules"}
               </span>
             </div>
 

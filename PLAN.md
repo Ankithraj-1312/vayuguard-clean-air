@@ -5,6 +5,8 @@
 **Track:** Air (Air Quality, Exposure Reduction, School Safety, Proactive Health)  
 **Target:** 1st Place Track Winner (₹2,00,000 + $2,000 AWS Credits + Amazon Fast-Track Interviews)
 
+> **Note:** this is the original planning document. Some details (Step Functions orchestration, Claude 3.5 Sonnet as the fixed model, WhatsApp/Telegram webhooks) were the intended design and are not all in the final build — see [README.md](README.md) for current, accurate status.
+
 ---
 
 ## Executive Summary & The "Why We Win" Thesis

@@ -122,7 +122,7 @@ The main AWS tools we use:
 | **AWS Lambda** | Small pieces of code that run automatically (no server needed) |
 | **Amazon DynamoDB** | A super-fast database that stores air readings and school schedules |
 | **Amazon EventBridge** | Like a timer — triggers our system every 15 minutes |
-| **AWS Step Functions** | Manages the order: Ingest → Forecast → Decide → Alert |
+| **FastAPI pipeline** | Manages the order: Ingest → Forecast → Decide → Alert (runs as one pipeline today; `infra/template.yaml` has the Lambda-per-step version ready to deploy) |
 | **Amazon Bedrock (AI)** | The AI brain that rewrites the school schedule and writes the alerts |
 | **Amazon SNS** | Sends SMS messages to phones |
 | **AWS Amplify** | Hosts our website/dashboard on the internet |

@@ -1,5 +1,7 @@
 # VayuGuard — Technical Implementation Plan
 
+> **Note:** this is the original pre-build technical plan, kept for reference. Some details below (per-step Lambda folders, Step Functions state machine, Claude 3.5 Sonnet as the fixed model) describe the intended design, not the final build. See [README.md](README.md) for what's actually implemented and its current status.
+
 ---
 
 ## Project Directory Structure

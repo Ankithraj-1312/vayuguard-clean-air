@@ -27,7 +27,7 @@ app.add_middleware(
 )
 
 # Initialize service instances
-aqi_service = aqi_service = AQIService(token=settings.WAQI_TOKEN, station=settings.DEFAULT_STATION)
+aqi_service = AQIService(token=settings.WAQI_TOKEN, station=settings.DEFAULT_STATION)
 forecast_service = ForecastService()
 evaluator_service = EvaluatorService()
 bedrock_service = BedrockService(region=settings.AWS_REGION, model_id=settings.BEDROCK_MODEL_ID)

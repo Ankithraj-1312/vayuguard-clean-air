@@ -1,6 +1,6 @@
 # 🛡️ VayuGuard: Dynamic Clean Air Intelligence & School Timetable Orchestrator
 
-[![AWS Bedrock](https://img.shields.io/badge/AWS_Bedrock-Claude_3.5_Sonnet-FF9900?logo=amazon-aws&logoColor=white)](https://aws.amazon.com/bedrock/)
+[![AWS Bedrock](https://img.shields.io/badge/AWS_Bedrock-Nova_Lite-FF9900?logo=amazon-aws&logoColor=white)](https://aws.amazon.com/bedrock/)
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/Frontend-React_19_+_Vite-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -22,10 +22,10 @@ Conventional air quality apps (e.g. AQI.in, SAFAR, IQAir) only display **passive
 
 **VayuGuard** is an automated clean-air safety platform built on AWS. Rather than stopping at passive charts, it **actively rewires the daily school timetable**:
 
-1. **Live WAQI & Sensor Ingest**: Ingests real-time air quality feeds across 10 regional stations with circuit-breaker caching.
+1. **Live WAQI & Sensor Ingest**: Ingests real-time air quality feeds across 10 regional stations with circuit-breaker (last-known-good) caching, and persists every reading to **Amazon DynamoDB**.
 2. **Short-Horizon Diurnal Forecast**: Predicts boundary-layer thermal trapping and afternoon wind dispersion windows.
-3. **Amazon Bedrock AI Rewiring (Claude 3.5 Sonnet)**: Intelligently shifts high-exertion outdoor activities (Assembly, Recess, Sports) into air-filtered indoor arenas or safer afternoon windows **without canceling academic time**.
-4. **Bilingual Alert Dispatcher**: Broadcasts WhatsApp & SMS updates to parents in **English and Hindi** plus HVAC filter activation commands to facility leads via **Amazon SNS**.
+3. **Amazon Bedrock AI Rewiring**: Calls Amazon Bedrock (Nova Lite by default — swappable to Claude via one env var, using Bedrock's model-agnostic Converse API) to intelligently shift high-exertion outdoor activities (Assembly, Recess, Sports) into air-filtered indoor arenas or safer afternoon windows **without canceling academic time**. If Bedrock is unreachable (e.g. account-level model restrictions), a deterministic rule-based engine takes over and is labeled honestly as such in the UI — never misreported as live AI.
+4. **Alert Dispatcher**: Broadcasts real alerts via **Amazon SNS** to subscribed staff/parents, plus bilingual (English/Hindi) advisory cards in the dashboard.
 5. **Pediatric Inhalation Metrics**: Quantifies student-hours protected and $\text{PM}_{2.5}$ inhalation avoided (along with cigarette equivalents).
 
 ---
@@ -42,22 +42,23 @@ Conventional air quality apps (e.g. AQI.in, SAFAR, IQAir) only display **passive
                 │
                 ▼
       ┌──────────────────┐
-      │ Amazon DynamoDB  │ ──▶ Historical Diurnal Inversion Models
+      │ Amazon DynamoDB  │ ──▶ Live AQI telemetry store (PK/SK single-table)
       └─────────┬────────┘
                 │
                 ▼
       ┌──────────────────┐
-      │  Amazon Bedrock  │ ──▶ Claude 3.5 Sonnet Timetable Optimization Engine
+      │  Amazon Bedrock  │ ──▶ Timetable Optimization Engine (Nova Lite / Claude via Converse API)
       └─────────┬────────┘
                 │
-        ┌───────┴────────┐
-        ▼                ▼
-┌──────────────┐  ┌──────────────┐
-│  Amazon SNS  │  │ AWS Amplify  │
-│  (WhatsApp/  │  │   (React     │
-│   SMS Push)  │  │  Dashboard)  │
-└──────────────┘  └──────────────┘
+                ▼
+      ┌──────────────────┐
+      │   Amazon SNS     │ ──▶ Real-time staff/parent alert broadcast
+      └──────────────────┘
+
+  Frontend: React + Vite dashboard calling the FastAPI backend directly.
 ```
+
+> **Current submission status:** DynamoDB and SNS are wired to real AWS resources and verified working end-to-end. Bedrock integration is implemented and will activate automatically once model access is approved on this AWS account (new-account restriction, not a code issue) — until then the app runs on its deterministic fallback engine, which is clearly labeled as such everywhere in the UI and API responses. `infra/template.yaml` (AWS SAM) defines the deployable Lambda/DynamoDB/SNS/EventBridge stack.
 
 ---
 
@@ -106,6 +107,12 @@ npm run dev
 4. **Pediatric Calculator Tab**: Toggle student age group and HEPA filtration to view calculated inhaled mass and cigarette equivalents.
 5. **WhatsApp Notices Tab**: Review parent reassurance cards generated in English & Hindi with 1-click copy buttons.
 6. **Judge Architecture Modal**: Click the top-right button to view the complete AWS serverless infrastructure blueprint.
+
+---
+
+## 🤖 AI Tools Disclosure
+
+This project was built with AI coding assistance from **Claude (Anthropic) via Claude Code**, used for architecture guidance, code generation, debugging, AWS wiring, and documentation. Per the hackathon rules, this is disclosed here as required.
 
 ---
 

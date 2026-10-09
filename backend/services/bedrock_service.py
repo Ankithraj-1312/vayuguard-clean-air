@@ -181,7 +181,7 @@ class BedrockService:
         est_pm25_avoided_mg = round((total_avoided_mins / 60.0) * (current_aqi * 0.015) * students_count, 1)
 
         return {
-            "engine": "Amazon Bedrock (Rule Engine & Safety Optimizer)",
+            "engine": "Deterministic Safety Engine (Local Fallback)",
             "live_ai": False,
             "optimized_schedule": optimized_periods,
             "summary": {

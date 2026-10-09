@@ -28,18 +28,22 @@ def lambda_handler(event, context):
                 "messages": [{"role": "user", "content": f"Optimize schedule for AQI {current_aqi}"}]
             }
             res = bedrock_client.invoke_model(
-                modelId='anthropic.claude-3-5-sonnet-20241022-v2:0',
+                modelId=os.getenv('BEDROCK_MODEL_ID', 'anthropic.claude-3-5-sonnet-20241022-v2:0'),
                 body=json.dumps(body)
             )
             raw = json.loads(res['body'].read())
-            return {'statusCode': 200, 'body': json.loads(raw['content'][0]['text'])}
+            parsed = json.loads(raw['content'][0]['text'])
+            parsed['engine'] = 'Amazon Bedrock (Claude 3.5 Sonnet)'
+            parsed['live_ai'] = True
+            return {'statusCode': 200, 'body': parsed}
         except Exception as e:
             print(f"Bedrock invocation failed: {e}")
 
     # Resilient fallback schedule output
     return {
         'statusCode': 200,
-        'engine': 'Amazon Bedrock (Claude 3.5 Sonnet / Resilient Optimizer)',
+        'engine': 'Deterministic Safety Engine (Local Fallback)',
+        'live_ai': False,
         'summary': {
             'modifications_count': 4,
             'student_hours_protected': 1629.2,

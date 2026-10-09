@@ -775,7 +775,7 @@ export default function App() {
   const [isRunning, setIsRunning] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(AUTO_REFRESH_SECONDS);
   const [alerts, setAlerts] = useState([
-    { id: '1', ts: '10:02:15', title: '🛡️ VayuGuard Engine Synchronized', msg: 'Connected to live WAQI feed and AWS Bedrock agent.' },
+    { id: '1', ts: '10:02:15', title: '🛡️ VayuGuard Engine Synchronized', msg: 'Connected to live WAQI feed. AWS Bedrock status will confirm once the first pipeline run completes.' },
     { id: '2', ts: '09:45:00', title: '⚠️ Boundary Layer Inversion', msg: 'Predictive diurnal curve indicates peak AQI spike near 12:30.' }
   ]);
   const [toasts, pushToast] = useToasts();
@@ -817,7 +817,8 @@ export default function App() {
         }
 
         if (showSteps && json.optimization.summary.modifications_count > 0) {
-          pushToast(`⚡ Amazon Bedrock re-optimized ${json.optimization.summary.modifications_count} periods`, 'success');
+          const engineLabel = json.optimization.live_ai ? 'Amazon Bedrock' : 'Local safety engine';
+          pushToast(`⚡ ${engineLabel} re-optimized ${json.optimization.summary.modifications_count} periods`, 'success');
           setAlerts(a => [{
             id: Date.now().toString(),
             ts: new Date().toLocaleTimeString(),
@@ -1121,10 +1122,15 @@ export default function App() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                 <Sparkles size={16} color="#38bdf8" />
                 <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#38bdf8', textTransform: 'uppercase' }}>
-                  Amazon Bedrock AI Planner
+                  {optimization.live_ai ? "Amazon Bedrock AI Planner" : "Schedule Safety Optimizer"}
                 </span>
               </div>
-              <span className="badge-pill" style={{ background: 'rgba(16,185,129,0.15)', color: '#86efac' }}>Claude 3.5 Active</span>
+              <span className="badge-pill" style={{
+                background: optimization.live_ai ? 'rgba(16,185,129,0.15)' : 'rgba(56,189,248,0.15)',
+                color: optimization.live_ai ? '#86efac' : '#38bdf8'
+              }}>
+                {optimization.live_ai ? "⚡ Live Bedrock (Claude 3.5)" : "🛡️ Local Safety Rules"}
+              </span>
             </div>
 
             <div style={{

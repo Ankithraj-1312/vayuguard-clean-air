@@ -1,0 +1,111 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  VayuGuard - Proactive Clean Air Intelligence & Timetable Orchestrator
+  AWS Serverless Application Model (SAM) Infrastructure
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 256
+    Runtime: python3.11
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref VayuGuardTable
+        SNS_TOPIC_ARN: !Ref VayuGuardAlertTopic
+        BEDROCK_MODEL_ID: anthropic.claude-3-5-sonnet-20241022-v2:0
+
+Resources:
+  # ─── 1. Amazon DynamoDB Telemetry Store ───────────────────────────
+  VayuGuardTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: VayuGuardTelemetry
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+  # ─── 2. Amazon SNS Notification Topic ─────────────────────────────
+  VayuGuardAlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: VayuGuard-CleanAir-Alerts
+      DisplayName: VayuGuard School Alerts
+
+  # ─── 3. Lambda: AQI Telemetry Ingestion ───────────────────────────
+  IngestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/lambdas/
+      Handler: ingest.lambda_handler
+      Description: Ingests live WAQI / CPCB air quality sensor readings
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref VayuGuardTable
+
+  # ─── 4. Lambda: 6-Hour Diurnal Forecast ───────────────────────────
+  ForecastFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/lambdas/
+      Handler: forecast.lambda_handler
+      Description: Generates short-horizon diurnal boundary-layer smog forecast
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref VayuGuardTable
+
+  # ─── 5. Lambda: Amazon Bedrock Schedule Optimizer ─────────────────
+  BedrockAdvisorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/lambdas/
+      Handler: bedrock_advisor.lambda_handler
+      Timeout: 60
+      Description: Invokes Claude 3.5 Sonnet on Amazon Bedrock for schedule rewiring
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource: "*"
+
+  # ─── 6. Lambda: Multi-Channel Alert Dispatcher ────────────────────
+  DispatcherFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/lambdas/
+      Handler: dispatcher.lambda_handler
+      Description: Fans out bilingual WhatsApp/SMS and Web Push notifications
+      Policies:
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt VayuGuardAlertTopic.TopicName
+
+  # ─── 7. Amazon EventBridge Periodic Trigger (Every 15 Minutes) ────
+  ScheduledRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Trigger VayuGuard pipeline every 15 minutes during school operational hours
+      ScheduleExpression: cron(0/15 2-9 ? * MON-FRI *)
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt IngestFunction.Arn
+          Id: IngestScheduledTarget
+
+Outputs:
+  DynamoDBTableName:
+    Description: DynamoDB Table Name
+    Value: !Ref VayuGuardTable
+  SNSTopicArn:
+    Description: SNS Topic ARN for Alerts
+    Value: !Ref VayuGuardAlertTopic

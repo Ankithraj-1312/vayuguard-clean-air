@@ -113,7 +113,7 @@ def get_aqi_forecast(
     station: Optional[str] = Query(None, description="Station ID or slug")
 ):
     current = aqi_service.get_current_reading(simulated_spike=spike, station=station)
-    history = aqi_service.get_history()
+    history = aqi_service.get_history(station=current.get("station_id"))
     forecast = forecast_service.generate_6h_forecast(
         current_aqi=current["aqi"],
         historical_readings=history,
@@ -198,7 +198,7 @@ def run_full_pipeline(req: Optional[PipelineRunRequest] = None):
     
     # Step 1: Ingest
     current = aqi_service.get_current_reading(simulated_spike=spike_val, station=station_val)
-    history = aqi_service.get_history()
+    history = aqi_service.get_history(station=current.get("station_id"))
     
     # Step 2: Forecast
     forecast = forecast_service.generate_6h_forecast(

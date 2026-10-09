@@ -1,10 +1,25 @@
+import os
 import time
 import requests
 import logging
+from decimal import Decimal
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
 
 logger = logging.getLogger("vayuguard.aqi")
+
+
+def _to_decimal(value: Any) -> Any:
+    """DynamoDB's boto3 resource API requires Decimal instead of float."""
+    if isinstance(value, float):
+        return Decimal(str(value))
+    return value
+
+
+def _from_decimal(value: Any) -> Any:
+    if isinstance(value, Decimal):
+        return float(value)
+    return value
 
 POPULAR_STATIONS = [
     {"id": "delhi/anand-vihar", "name": "Delhi — Anand Vihar", "city": "Delhi"},
@@ -59,9 +74,58 @@ class AQIService:
     def __init__(self, token: str = "", station: str = "delhi/anand-vihar"):
         self.token = token
         self.station = station
+        self._table = None
+
+        try:
+            import boto3
+            if os.getenv("AWS_ACCESS_KEY_ID"):
+                dynamodb = boto3.resource("dynamodb", region_name=os.getenv("AWS_REGION", "us-east-1"))
+                self._table = dynamodb.Table(os.getenv("TABLE_NAME", "vayuguard-telemetry"))
+        except Exception as e:
+            logger.warning(f"Could not initialize DynamoDB table: {e}")
 
     def get_stations(self) -> List[Dict[str, str]]:
         return POPULAR_STATIONS
+
+    def _persist_reading(self, station: str, reading: Dict[str, Any]) -> None:
+        if not self._table:
+            return
+        try:
+            self._table.put_item(Item={
+                "PK": f"STATION#{station}",
+                "SK": f"READING#{reading['updated_at']}",
+                "aqi": _to_decimal(reading["aqi"]),
+                "pm25": _to_decimal(reading["pm25"]),
+                "pm10": _to_decimal(reading["pm10"]),
+                "source": "WAQI_LIVE"
+            })
+        except Exception as e:
+            logger.warning(f"DynamoDB write failed for {station}: {e}")
+
+    def _query_history(self, station: str, limit: int = 20) -> Optional[List[Dict[str, Any]]]:
+        if not self._table:
+            return None
+        try:
+            from boto3.dynamodb.conditions import Key
+            resp = self._table.query(
+                KeyConditionExpression=Key("PK").eq(f"STATION#{station}"),
+                ScanIndexForward=True,
+                Limit=limit
+            )
+            items = resp.get("Items", [])
+            if not items:
+                return None
+            return [
+                {
+                    "timestamp": item["SK"].replace("READING#", ""),
+                    "aqi": int(_from_decimal(item["aqi"])),
+                    "pm25": _from_decimal(item["pm25"])
+                }
+                for item in items
+            ]
+        except Exception as e:
+            logger.warning(f"DynamoDB query failed for {station}: {e}")
+            return None
 
     def get_current_reading(self, force_fresh: bool = False, simulated_spike: int = 0, station: Optional[str] = None) -> Dict[str, Any]:
         target_station = station if station else self.station
@@ -119,6 +183,7 @@ class AQIService:
                             "action_level": classification["action_level"]
                         }
                         _LKG_CACHE_MAP[target_station] = result
+                        self._persist_reading(target_station, result)
                         return result
             except Exception as e:
                 logger.warning(f"Live AQI API failed for station {target_station}, using fallback: {e}")
@@ -133,5 +198,9 @@ class AQIService:
             "action_level": classification["action_level"]
         }
 
-    def get_history(self):
+    def get_history(self, station: Optional[str] = None):
+        target_station = station if station else self.station
+        live_history = self._query_history(target_station)
+        if live_history:
+            return live_history
         return _READING_HISTORY

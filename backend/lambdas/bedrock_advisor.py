@@ -21,19 +21,18 @@ def lambda_handler(event, context):
         
     if bedrock_client and os.getenv('AWS_ACCESS_KEY_ID'):
         try:
-            body = {
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 1024,
-                "system": "You are VayuGuard AI. Optimize school schedule during smog. Return JSON.",
-                "messages": [{"role": "user", "content": f"Optimize schedule for AQI {current_aqi}"}]
-            }
-            res = bedrock_client.invoke_model(
-                modelId=os.getenv('BEDROCK_MODEL_ID', 'anthropic.claude-3-5-sonnet-20241022-v2:0'),
-                body=json.dumps(body)
+            model_id = os.getenv('BEDROCK_MODEL_ID', 'amazon.nova-lite-v1:0')
+            res = bedrock_client.converse(
+                modelId=model_id,
+                system=[{"text": "You are VayuGuard AI. Optimize school schedule during smog. Respond with ONLY a single JSON object."}],
+                messages=[{"role": "user", "content": [{"text": f"Optimize schedule for AQI {current_aqi}"}]}],
+                inferenceConfig={"maxTokens": 1024, "temperature": 0.3}
             )
-            raw = json.loads(res['body'].read())
-            parsed = json.loads(raw['content'][0]['text'])
-            parsed['engine'] = 'Amazon Bedrock (Claude 3.5 Sonnet)'
+            content_text = res["output"]["message"]["content"][0]["text"]
+            start_idx = content_text.find("{")
+            end_idx = content_text.rfind("}") + 1
+            parsed = json.loads(content_text[start_idx:end_idx])
+            parsed['engine'] = f'Amazon Bedrock ({model_id})'
             parsed['live_ai'] = True
             return {'statusCode': 200, 'body': parsed}
         except Exception as e:

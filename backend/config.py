@@ -14,7 +14,7 @@ class Settings:
     AWS_REGION: str = os.getenv("AWS_REGION", "us-east-1")
     DYNAMODB_TABLE: str = os.getenv("TABLE_NAME", "vayuguard")
     SNS_TOPIC_ARN: str = os.getenv("SNS_TOPIC_ARN", "")
-    BEDROCK_MODEL_ID: str = os.getenv("BEDROCK_MODEL_ID", "anthropic.claude-3-5-sonnet-20241022-v2:0")
+    BEDROCK_MODEL_ID: str = os.getenv("BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0")
     
     # Safety Thresholds (India National AQI Standard)
     AQI_MODERATE: int = 100

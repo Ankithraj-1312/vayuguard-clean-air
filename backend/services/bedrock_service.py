@@ -5,12 +5,26 @@ from typing import Dict, Any, List
 
 logger = logging.getLogger("vayuguard.bedrock")
 
+def _friendly_model_name(model_id: str) -> str:
+    if "nova-lite" in model_id:
+        return "Amazon Bedrock (Nova Lite)"
+    if "nova-micro" in model_id:
+        return "Amazon Bedrock (Nova Micro)"
+    if "nova-pro" in model_id:
+        return "Amazon Bedrock (Nova Pro)"
+    if "claude-3-5-sonnet" in model_id:
+        return "Amazon Bedrock (Claude 3.5 Sonnet)"
+    if "claude" in model_id:
+        return "Amazon Bedrock (Claude)"
+    return f"Amazon Bedrock ({model_id})"
+
+
 class BedrockService:
-    def __init__(self, region: str = "us-east-1", model_id: str = "anthropic.claude-3-5-sonnet-20241022-v2:0"):
+    def __init__(self, region: str = "us-east-1", model_id: str = "amazon.nova-lite-v1:0"):
         self.region = region
         self.model_id = model_id
         self._bedrock_client = None
-        
+
         try:
             import boto3
             self._bedrock_client = boto3.client("bedrock-runtime", region_name=self.region)
@@ -47,39 +61,42 @@ class BedrockService:
             "flagged_hazardous_periods": evaluation.get("flagged_periods", [])
         }
         
-        # Try live Amazon Bedrock call if client is available
+        # Try live Amazon Bedrock call if client is available.
+        # Uses the Converse API, which is model-agnostic (works the same for
+        # Nova, Claude, Llama, etc.) so switching BEDROCK_MODEL_ID is a one-line change.
         if self._bedrock_client and os.getenv("AWS_ACCESS_KEY_ID"):
             try:
-                body = {
-                    "anthropic_version": "bedrock-2023-05-31",
-                    "max_tokens": 2048,
-                    "system": system_prompt,
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": f"Optimize this school day to minimize PM2.5 exposure. Return ONLY JSON:\n\n{json.dumps(prompt_payload, indent=2)}"
-                        }
-                    ]
-                }
-                
-                response = self._bedrock_client.invoke_model(
-                    modelId=self.model_id,
-                    body=json.dumps(body),
-                    contentType="application/json",
-                    accept="application/json"
+                user_text = (
+                    "Optimize this school day to minimize PM2.5 exposure. "
+                    "Respond with ONLY a single JSON object, no markdown fences, no commentary:\n\n"
+                    f"{json.dumps(prompt_payload, indent=2)}"
                 )
-                
-                raw_response = json.loads(response["body"].read())
-                content_text = raw_response["content"][0]["text"]
-                
+
+                response = self._bedrock_client.converse(
+                    modelId=self.model_id,
+                    system=[{"text": system_prompt}],
+                    messages=[{"role": "user", "content": [{"text": user_text}]}],
+                    inferenceConfig={"maxTokens": 2048, "temperature": 0.3}
+                )
+
+                content_text = response["output"]["message"]["content"][0]["text"]
+
+                # Strip markdown code fences if the model added them anyway
+                cleaned = content_text.strip()
+                if cleaned.startswith("```"):
+                    cleaned = cleaned.split("```")[1]
+                    if cleaned.startswith("json"):
+                        cleaned = cleaned[4:]
+
                 # Extract JSON block
-                start_idx = content_text.find("{")
-                end_idx = content_text.rfind("}") + 1
+                start_idx = cleaned.find("{")
+                end_idx = cleaned.rfind("}") + 1
                 if start_idx != -1 and end_idx != -1:
-                    parsed_result = json.loads(content_text[start_idx:end_idx])
-                    parsed_result["engine"] = "Amazon Bedrock (Claude 3.5 Sonnet)"
+                    parsed_result = json.loads(cleaned[start_idx:end_idx])
+                    parsed_result["engine"] = _friendly_model_name(self.model_id)
                     parsed_result["live_ai"] = True
                     return parsed_result
+                logger.warning("Bedrock response had no parseable JSON object; falling back.")
             except Exception as e:
                 logger.warning(f"Bedrock invocation exception: {e}. Falling back to deterministic optimization engine.")
 

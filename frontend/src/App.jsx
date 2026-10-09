@@ -11,17 +11,19 @@ const API_BASE = "http://127.0.0.1:8000";
 const AUTO_REFRESH_SECONDS = 30;
 
 // ─── Station Network with Geo Coordinates ───────────────────────────
+// baseAQI intentionally removed: only the selected station's AQI is ever shown,
+// and it always comes from a real backend fetch — never a guessed per-station number.
 const STATIONS = [
-  { id: "delhi/anand-vihar",  name: "Delhi — Anand Vihar",   lat: 28.6469, lng: 77.3160, baseAQI: 285, region: "East Delhi", xPct: 62, yPct: 42 },
-  { id: "delhi/punjabi-bagh", name: "Delhi — Punjabi Bagh",  lat: 28.6692, lng: 77.1263, baseAQI: 240, region: "West Delhi", xPct: 40, yPct: 38 },
-  { id: "delhi/r.k.-puram",   name: "Delhi — R.K. Puram",    lat: 28.5644, lng: 77.1750, baseAQI: 215, region: "South Delhi", xPct: 45, yPct: 60 },
-  { id: "delhi/mandir-marg",  name: "Delhi — Mandir Marg",   lat: 28.6297, lng: 77.1990, baseAQI: 195, region: "Central Delhi", xPct: 50, yPct: 48 },
-  { id: "mumbai",             name: "Mumbai — BKC Bandra",   lat: 19.0657, lng: 72.8687, baseAQI: 110, region: "Maharashtra", xPct: 25, yPct: 75 },
-  { id: "kolkata",            name: "Kolkata — Victoria",    lat: 22.5448, lng: 88.3426, baseAQI: 175, region: "West Bengal", xPct: 82, yPct: 62 },
-  { id: "bengaluru",          name: "Bengaluru — BTM",       lat: 12.9166, lng: 77.6101, baseAQI: 65,  region: "Karnataka", xPct: 44, yPct: 88 },
-  { id: "patna",              name: "Patna — DRM Office",     lat: 25.5941, lng: 85.1376, baseAQI: 295, region: "Bihar", xPct: 74, yPct: 50 },
-  { id: "hyderabad",          name: "Hyderabad — Central",   lat: 17.4563, lng: 78.4428, baseAQI: 92,  region: "Telangana", xPct: 48, yPct: 72 },
-  { id: "lucknow",            name: "Lucknow — Talkatora",   lat: 26.8322, lng: 80.8988, baseAQI: 260, region: "Uttar Pradesh", xPct: 60, yPct: 46 },
+  { id: "delhi/anand-vihar",  name: "Delhi — Anand Vihar",   lat: 28.6469, lng: 77.3160, region: "East Delhi", xPct: 62, yPct: 42 },
+  { id: "delhi/punjabi-bagh", name: "Delhi — Punjabi Bagh",  lat: 28.6692, lng: 77.1263, region: "West Delhi", xPct: 40, yPct: 38 },
+  { id: "delhi/r.k.-puram",   name: "Delhi — R.K. Puram",    lat: 28.5644, lng: 77.1750, region: "South Delhi", xPct: 45, yPct: 60 },
+  { id: "delhi/mandir-marg",  name: "Delhi — Mandir Marg",   lat: 28.6297, lng: 77.1990, region: "Central Delhi", xPct: 50, yPct: 48 },
+  { id: "mumbai",             name: "Mumbai — BKC Bandra",   lat: 19.0657, lng: 72.8687, region: "Maharashtra", xPct: 25, yPct: 75 },
+  { id: "kolkata",            name: "Kolkata — Victoria",    lat: 22.5448, lng: 88.3426, region: "West Bengal", xPct: 82, yPct: 62 },
+  { id: "bengaluru",          name: "Bengaluru — BTM",       lat: 12.9166, lng: 77.6101, region: "Karnataka", xPct: 44, yPct: 88 },
+  { id: "patna",              name: "Patna — DRM Office",     lat: 25.5941, lng: 85.1376, region: "Bihar", xPct: 74, yPct: 50 },
+  { id: "hyderabad",          name: "Hyderabad — Central",   lat: 17.4563, lng: 78.4428, region: "Telangana", xPct: 48, yPct: 72 },
+  { id: "lucknow",            name: "Lucknow — Talkatora",   lat: 26.8322, lng: 80.8988, region: "Uttar Pradesh", xPct: 60, yPct: 46 },
 ];
 
 const PRESET_SCENARIOS = [
@@ -392,7 +394,7 @@ function DiurnalTrendChart({ currentAqi }) {
 // ─── Clean Redesigned Geographic Sensor Map & Telemetry Inspector ──
 function CleanSensorMap({ stations, selectedStation, onSelectStation, currentAqi, reading }) {
   const selectedStObj = stations.find(s => s.id === selectedStation) || stations[0];
-  const { color: selColor, label: selLabel } = classifyAQI(selectedStObj.id === selectedStation ? currentAqi : selectedStObj.baseAQI);
+  const { color: selColor, label: selLabel } = classifyAQI(currentAqi);
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 18, minHeight: 480 }}>
@@ -428,11 +430,12 @@ function CleanSensorMap({ stations, selectedStation, onSelectStation, currentAqi
             </g>
           </svg>
 
-          {/* Interactive Geographic Station Pins */}
+          {/* Interactive Geographic Station Pins.
+              Only the selected station shows a real (live-fetched) AQI number —
+              unselected pins show no number at all rather than a guessed placeholder. */}
           {stations.map(st => {
             const isSelected = st.id === selectedStation;
-            const approxAqi = isSelected ? currentAqi : st.baseAQI;
-            const { color } = classifyAQI(approxAqi);
+            const color = isSelected ? classifyAQI(currentAqi).color : 'rgba(148,163,184,0.6)';
 
             return (
               <div
@@ -474,9 +477,11 @@ function CleanSensorMap({ stations, selectedStation, onSelectStation, currentAqi
                   <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#f8fafc' }}>
                     {st.name.split('—')[0]}
                   </span>
-                  <span style={{ fontSize: '0.72rem', fontWeight: 800, color, fontFamily: 'var(--font-mono)' }}>
-                    {approxAqi}
-                  </span>
+                  {isSelected && (
+                    <span style={{ fontSize: '0.72rem', fontWeight: 800, color, fontFamily: 'var(--font-mono)' }}>
+                      {currentAqi}
+                    </span>
+                  )}
                 </div>
               </div>
             );
@@ -512,13 +517,13 @@ function CleanSensorMap({ stations, selectedStation, onSelectStation, currentAqi
               boxShadow: `0 0 20px ${selColor}44`
             }}>
               <span style={{ fontSize: '1.5rem', fontWeight: 900, color: '#fff', fontFamily: 'var(--font-mono)' }}>
-                {selectedStObj.id === selectedStation ? currentAqi : selectedStObj.baseAQI}
+                {currentAqi}
               </span>
             </div>
             <div>
               <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Station AQI Reading</div>
               <div style={{ fontSize: '1rem', fontWeight: 700, color: selColor }}>
-                {selectedStObj.id === selectedStation ? reading.action_level : 'Telemetry Active'}
+                {reading.action_level}
               </div>
               <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>
                 Lat: {selectedStObj.lat.toFixed(4)} • Lng: {selectedStObj.lng.toFixed(4)}
@@ -531,13 +536,13 @@ function CleanSensorMap({ stations, selectedStation, onSelectStation, currentAqi
             <div style={{ background: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 10, border: '1px solid var(--border-glass)' }}>
               <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)' }}>PM2.5 Concentration</div>
               <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc', fontFamily: 'var(--font-mono)' }}>
-                {selectedStObj.id === selectedStation ? reading.pm25 : (selectedStObj.baseAQI * 0.72).toFixed(1)} <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>µg/m³</span>
+                {reading.pm25} <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>µg/m³</span>
               </div>
             </div>
             <div style={{ background: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 10, border: '1px solid var(--border-glass)' }}>
               <div style={{ fontSize: '0.68rem', color: 'var(--text-dim)' }}>PM10 Coarse Dust</div>
               <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc', fontFamily: 'var(--font-mono)' }}>
-                {selectedStObj.id === selectedStation ? reading.pm10 : (selectedStObj.baseAQI * 1.15).toFixed(1)} <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>µg/m³</span>
+                {reading.pm10} <span style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>µg/m³</span>
               </div>
             </div>
             <div style={{ background: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 10, border: '1px solid var(--border-glass)' }}>
@@ -774,11 +779,14 @@ export default function App() {
   const [pipelineStep, setPipelineStep] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(AUTO_REFRESH_SECONDS);
-  const [alerts, setAlerts] = useState([
-    { id: '1', ts: '10:02:15', title: '🛡️ VayuGuard Engine Synchronized', msg: 'Connected to live WAQI feed. AWS Bedrock status will confirm once the first pipeline run completes.' },
-    { id: '2', ts: '09:45:00', title: '⚠️ Boundary Layer Inversion', msg: 'Predictive diurnal curve indicates peak AQI spike near 12:30.' }
-  ]);
+  // Starts empty — real entries are only pushed in from actual pipeline runs,
+  // never seeded with canned/fabricated alert history.
+  const [alerts, setAlerts] = useState([]);
   const [toasts, pushToast] = useToasts();
+  // dataReady gates the UI: the state above is shape-only placeholder data,
+  // never real numbers, until the first live backend response lands.
+  const [dataReady, setDataReady] = useState(false);
+  const [connectionError, setConnectionError] = useState(null);
   const displayAQI = useCountUp(aqi);
   const { color: aqiColor, label: aqiLabel, pct: aqiPct, hazard: aqiHazard, mask: aqiMask } = classifyAQI(aqi);
 
@@ -807,6 +815,16 @@ export default function App() {
         setForecast(json.forecast);
         setOptimization(json.optimization);
         setSecondsLeft(AUTO_REFRESH_SECONDS);
+        if (!dataReady) {
+          setAlerts(a => [{
+            id: Date.now().toString(),
+            ts: new Date().toLocaleTimeString(),
+            title: '🛡️ Connected to live feed',
+            msg: `First sync complete: ${json.current_reading.station_name} reading AQI ${newAqi} (${classifyAQI(newAqi).label}).`
+          }, ...a]);
+        }
+        setDataReady(true);
+        setConnectionError(null);
 
         if (soundEnabled) {
           playAlertChime(newAqi >= 250);
@@ -828,13 +846,17 @@ export default function App() {
         }
       }
     } catch {
-      pushToast('Live backend syncing offline – serving cached data', 'warning');
+      if (dataReady) {
+        pushToast('Live backend unreachable – showing last synced data', 'warning');
+      } else {
+        setConnectionError('Cannot reach the VayuGuard backend. Start it at ' + API_BASE + ' and this screen will connect automatically.');
+      }
     }
     if (showSteps) {
       setIsRunning(false);
       setPipelineStep(0);
     }
-  }, [aqi, spike, selectedStation, isRunning, pushToast, soundEnabled]);
+  }, [aqi, spike, selectedStation, isRunning, pushToast, soundEnabled, dataReady]);
 
   // ─── Auto-Polling & Timers ───────────────────────────────────────
   useEffect(() => {
@@ -876,6 +898,33 @@ export default function App() {
       transition: 'background 1.5s ease',
       position: 'relative'
     }}>
+
+      {/* ── Real-Data Gate: nothing below is shown until the first live backend
+           response lands, so no placeholder/sample numbers are ever mistaken
+           for real readings. ── */}
+      {!dataReady && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          background: '#070a13', display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24, textAlign: 'center'
+        }}>
+          <RefreshCw size={36} color="#38bdf8" className="spin-icon" style={{ animation: 'spin 1.2s linear infinite' }} />
+          <div style={{ color: '#f8fafc', fontWeight: 700, fontSize: '1rem' }}>
+            {connectionError ? 'Backend not reachable' : 'Connecting to live AQI feed…'}
+          </div>
+          <div style={{ color: '#94a3b8', fontSize: '0.85rem', maxWidth: 420 }}>
+            {connectionError || 'Fetching the first real reading and forecast — no sample data is shown until this completes.'}
+          </div>
+          {connectionError && (
+            <button onClick={() => runPipeline(0, selectedStation, false)} style={{
+              marginTop: 8, background: '#38bdf8', color: '#07101d', border: 'none',
+              padding: '10px 18px', borderRadius: 8, fontWeight: 700, cursor: 'pointer'
+            }}>
+              Retry
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── Background Atmosphere Particles ── */}
       <AtmosphereCanvas aqi={aqi} />

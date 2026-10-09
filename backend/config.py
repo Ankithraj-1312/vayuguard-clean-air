@@ -1,6 +1,9 @@
 import os
+from dotenv import load_dotenv
 from pydantic import BaseModel
 from typing import List, Dict, Any
+
+load_dotenv()
 
 class Settings:
     APP_NAME: str = "VayuGuard"

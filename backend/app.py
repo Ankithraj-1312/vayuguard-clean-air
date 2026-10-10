@@ -229,7 +229,8 @@ def run_full_pipeline(req: Optional[PipelineRunRequest] = None):
         school_name=settings.DEFAULT_SCHOOL["name"],
         current_aqi=current["aqi"],
         advisories=optimization["advisory_cards"],
-        students_protected=student_hours
+        students_protected=student_hours,
+        trigger_alert=evaluation.get("is_action_required", False)
     )
     
     return {

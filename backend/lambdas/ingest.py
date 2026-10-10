@@ -2,6 +2,7 @@ import json
 import os
 import time
 import requests
+from decimal import Decimal
 from datetime import datetime, timezone
 
 # Optional boto3 import for DynamoDB
@@ -38,7 +39,7 @@ def lambda_handler(event, context):
                             'PK': f'STATION#{STATION_ID}',
                             'SK': f'READING#{ts}',
                             'aqi': aqi,
-                            'pm25': pm25,
+                            'pm25': Decimal(str(pm25)),
                             'source': 'WAQI_LIVE'
                         })
                     

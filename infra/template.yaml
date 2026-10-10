@@ -4,11 +4,17 @@ Description: >
   VayuGuard - Proactive Clean Air Intelligence & Timetable Orchestrator
   AWS Serverless Application Model (SAM) Infrastructure
 
+Parameters:
+  WaqiToken:
+    Type: String
+    NoEcho: true
+    Description: WAQI API token (from aqicn.org), passed at deploy time, never stored in the template
+
 Globals:
   Function:
     Timeout: 30
     MemorySize: 256
-    Runtime: python3.11
+    Runtime: python3.12
     Environment:
       Variables:
         TABLE_NAME: !Ref VayuGuardTable
@@ -50,9 +56,19 @@ Resources:
       CodeUri: ../backend/lambdas/
       Handler: ingest.lambda_handler
       Description: Ingests live WAQI / CPCB air quality sensor readings
+      Environment:
+        Variables:
+          WAQI_TOKEN: !Ref WaqiToken
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref VayuGuardTable
+      Events:
+        ScheduledIngest:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0/15 2-9 ? * MON-FRI *)
+            Description: Runs every 15 minutes during Indian school hours (IST)
+            Enabled: true
 
   # ─── 4. Lambda: 6-Hour Diurnal Forecast ───────────────────────────
   ForecastFunction:
@@ -72,7 +88,7 @@ Resources:
       CodeUri: ../backend/lambdas/
       Handler: bedrock_advisor.lambda_handler
       Timeout: 60
-      Description: Invokes Claude 3.5 Sonnet on Amazon Bedrock for schedule rewiring
+      Description: Invokes Amazon Bedrock (Nova Lite by default, model-agnostic via Converse API) for schedule rewiring
       Policies:
         - Statement:
             - Effect: Allow
@@ -90,17 +106,6 @@ Resources:
       Policies:
         - SNSPublishMessagePolicy:
             TopicName: !GetAtt VayuGuardAlertTopic.TopicName
-
-  # ─── 7. Amazon EventBridge Periodic Trigger (Every 15 Minutes) ────
-  ScheduledRule:
-    Type: AWS::Events::Rule
-    Properties:
-      Description: Trigger VayuGuard pipeline every 15 minutes during school operational hours
-      ScheduleExpression: cron(0/15 2-9 ? * MON-FRI *)
-      State: ENABLED
-      Targets:
-        - Arn: !GetAtt IngestFunction.Arn
-          Id: IngestScheduledTarget
 
 Outputs:
   DynamoDBTableName:

@@ -1,22 +1,19 @@
 import logging
 import os
+import time
 from datetime import datetime, timezone
 from typing import Dict, Any, List
 
 logger = logging.getLogger("vayuguard.notification")
 
-# In-memory history of dispatched alerts
-_DISPATCH_LOG: List[Dict[str, Any]] = [
-    {
-        "id": "ALERT-001",
-        "timestamp": datetime.now(timezone.utc).strftime("%I:%M %p"),
-        "channel": "Web Push & AWS SNS",
-        "recipient_group": "School Admins & Class Teachers",
-        "title": "VayuGuard Schedule Re-sequenced",
-        "message": "Morning Assembly moved indoors. Primary Recess relocated to Gymnasium due to projected 380 AQI inversion peak.",
-        "status": "DELIVERED"
-    }
-]
+# In-memory history of dispatched alerts — starts empty, only real dispatches get logged.
+_DISPATCH_LOG: List[Dict[str, Any]] = []
+
+# Minimum seconds between real SNS sends, so a frontend that polls every 30s
+# (or repeated manual runs) doesn't re-email on every single poll while the
+# same hazardous condition is still active.
+SNS_COOLDOWN_SECONDS = 600
+_last_sns_sent_at: float = 0.0
 
 class NotificationService:
     def __init__(self, sns_topic_arn: str = ""):
@@ -77,20 +74,29 @@ class NotificationService:
         school_name: str,
         current_aqi: int,
         advisories: Dict[str, str],
-        students_protected: float
+        students_protected: float,
+        trigger_alert: bool = True
     ) -> Dict[str, Any]:
         """
         Fans out real-time notifications to school leadership and subscribed web clients.
+
+        trigger_alert gates the REAL SNS send: only a genuine hazardous
+        condition (caller passes evaluation.is_action_required) should ever
+        email/SMS anyone. A cooldown additionally prevents re-sending while
+        the same condition persists across repeated polls.
         """
         now_str = datetime.now(timezone.utc).strftime("%I:%M %p")
         alert_id = f"ALERT-{len(_DISPATCH_LOG) + 1:03d}"
-        
+
         bilingual = self.generate_bilingual_cards(school_name, current_aqi, advisories)
         admin_msg = advisories.get("admin", f"AQI {current_aqi}: Schedule re-sequenced to protect students.")
-        
-        # 1. AWS SNS Attempt if configured
+
+        # 1. AWS SNS Attempt if configured, gated by trigger_alert + cooldown
+        global _last_sns_sent_at
         sns_dispatched = False
-        if self._sns_client and self.sns_topic_arn:
+        seconds_since_last = time.time() - _last_sns_sent_at
+        should_send = trigger_alert and seconds_since_last >= SNS_COOLDOWN_SECONDS
+        if should_send and self._sns_client and self.sns_topic_arn:
             try:
                 self._sns_client.publish(
                     TopicArn=self.sns_topic_arn,
@@ -98,6 +104,7 @@ class NotificationService:
                     Message=f"{admin_msg}\n\nStudent Hours Protected: {students_protected}\n\nParent Update (Hindi):\n{bilingual['parent_whatsapp']['hindi']}"
                 )
                 sns_dispatched = True
+                _last_sns_sent_at = time.time()
             except Exception as e:
                 logger.warning(f"SNS publish failed: {e}")
 

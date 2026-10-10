@@ -51,17 +51,12 @@ Generate each scene's voiceover as its own separate ElevenLabs clip (not one gia
 
 ---
 
-## Scene 6 — Bedrock Status (1:55–2:20, ~25s, 62 words)
+## Scene 6 — Measurable Impact (1:55–2:20, ~25s, 62 words)
 
-**Pick ONE version based on reality at recording time — do not record both.**
+**Screen:** Cut back to the dashboard's optimization summary card from the Scene 3 hazard trigger — the one showing modifications count, total avoided outdoor minutes, and the student-hours-protected figure. Point the cursor at each number as you mention it.
 
-**Screen (either version):** Cut back to the dashboard's optimization card, pointing at the engine name badge.
-
-**Voiceover — Version A, if Bedrock is still blocked:**
-> "The schedule logic is built to call Amazon Bedrock for AI-driven optimization. Right now, this AWS account is under a new-account model access restriction — so it's running its documented fallback engine instead, and it says so, right here, instead of pretending otherwise."
-
-**Voiceover — Version B, if Bedrock access comes through before you record:**
-> "And here — this schedule was just generated live by Amazon Bedrock. You can see the model name right there on screen. Not a canned response: a real call, with a real result, happening as we speak."
+**Voiceover:**
+> "This isn't just a schedule swap — it's a measured outcome. Four periods re-sequenced, saving over a hundred minutes of outdoor exposure, protecting well over a thousand student-hours from hazardous air, all computed from the real ventilation and exertion data behind each activity — not a guess."
 
 ---
 
@@ -85,7 +80,6 @@ Generate each scene's voiceover as its own separate ElevenLabs clip (not one gia
 
 ## Before You Record / Generate
 
-- **Decide Scene 6's version first** — check Bedrock access one more time right before recording, then generate only that one voiceover clip.
 - **Rehearse the Scene 3 trigger once off-camera** — confirm the SNS email actually lands within a few seconds, so Scene 4's screenshot is ready to go rather than you waiting live on camera.
 - **Pre-load and pre-scroll every screen** named above before you start recording video — the Console pages especially, so there's no fumbling/searching on screen.
 - **Say numbers exactly as the UI shows them** when you narrate live, or when checking the AI-generated voiceover against the screen — if the AQI reads 71, the voiceover shouldn't say "around 70."

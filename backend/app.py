@@ -17,11 +17,17 @@ app = FastAPI(
     version=settings.VERSION
 )
 
-# Enable CORS for frontend integration
+# CORS scoped to the known frontend origins (deployed Amplify app + local dev),
+# not a wildcard - this API takes no cookies/auth so allow_credentials stays off.
+ALLOWED_ORIGINS = [
+    "https://main.d3d19bldh9dql2.amplifyapp.com",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

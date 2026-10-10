@@ -94,7 +94,7 @@ Resources:
             - Effect: Allow
               Action:
                 - bedrock:InvokeModel
-              Resource: "*"
+              Resource: "arn:aws:bedrock:*::foundation-model/*"
 
   # ─── 6. Lambda: Multi-Channel Alert Dispatcher ────────────────────
   DispatcherFunction:
@@ -128,7 +128,7 @@ Resources:
             - Effect: Allow
               Action:
                 - bedrock:InvokeModel
-              Resource: "*"
+              Resource: "arn:aws:bedrock:*::foundation-model/*"
       Events:
         RootPath:
           Type: HttpApi

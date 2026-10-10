@@ -62,6 +62,23 @@ Conventional air quality apps (e.g. AQI.in, SAFAR, IQAir) only display **passive
 
 ---
 
+## 🧭 Design Decision: Honest Fallbacks, Not Silent Ones
+
+Most AI-pitched hackathon projects have a hidden failure mode: when the AI call fails, the fallback quietly pretends nothing happened. We designed against that deliberately, because an air-safety tool that lies about its own confidence is worse than one that's simply less clever.
+
+Every layer that can fail has an explicit, surfaced state instead of a silent one:
+
+| Layer | If the live path fails... | How it's surfaced |
+| --- | --- | --- |
+| **Bedrock schedule optimization** | Falls back to a deterministic, attribute-driven rule engine (`HAZARD_THRESHOLD_BY_INTENSITY` in `bedrock_service.py`) | API response and UI badge both say `"Deterministic Safety Engine (Local Fallback)"` / `live_ai: false` — never mislabeled as Bedrock |
+| **WAQI live AQI reading** | Falls back to the last-known-good cached reading | UI shows a `⚠ CACHED` badge instead of presenting stale data as current |
+| **The AQI-spike simulator** | N/A — always synthetic, by design | UI shows a `⚡ SIMULATED` badge whenever a spike is active |
+| **SNS alert dispatch** | Only fires on a genuine detected hazard (`evaluation.is_action_required`), with a 10-minute cooldown | `sns_dispatched` in the API response reflects what actually happened, not what was attempted |
+
+The fallback engine itself is not hardcoded to one school's timetable either: it keys off each period's own `is_outdoor` / `intensity` / `activity_type` attributes rather than magic `period_id` numbers, so it generalizes to any schedule, not just the bundled sample one (see `backend/tests/test_bedrock_service.py`).
+
+---
+
 ## 🚀 Quick Start (Run Locally)
 
 ### Prerequisites
@@ -83,6 +100,13 @@ npm install
 npm run dev
 ```
 *Frontend runs on `http://localhost:5173`.*
+
+### 3. Run the Test Suite
+```bash
+cd backend
+python -m pytest tests/ -v
+```
+*17 tests covering Bedrock response parsing, the deterministic fallback engine's hazard thresholds, and the SNS alert cooldown/gating logic.*
 
 ---
 

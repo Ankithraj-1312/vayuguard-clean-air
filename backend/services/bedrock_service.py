@@ -5,6 +5,25 @@ from typing import Dict, Any, List
 
 logger = logging.getLogger("vayuguard.bedrock")
 
+def extract_json_object(text: str) -> Dict[str, Any]:
+    """
+    Pulls a single JSON object out of a model's raw text response, tolerating
+    markdown code fences (```json ... ``` or ``` ... ```) the model may add
+    despite being asked not to. Raises ValueError if no JSON object is found.
+    """
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        cleaned = cleaned.split("```")[1]
+        if cleaned.startswith("json"):
+            cleaned = cleaned[4:]
+
+    start_idx = cleaned.find("{")
+    end_idx = cleaned.rfind("}") + 1
+    if start_idx == -1 or end_idx == 0:
+        raise ValueError("No JSON object found in model response")
+    return json.loads(cleaned[start_idx:end_idx])
+
+
 def _friendly_model_name(model_id: str) -> str:
     if "nova-lite" in model_id:
         return "Amazon Bedrock (Nova Lite)"
@@ -81,22 +100,13 @@ class BedrockService:
 
                 content_text = response["output"]["message"]["content"][0]["text"]
 
-                # Strip markdown code fences if the model added them anyway
-                cleaned = content_text.strip()
-                if cleaned.startswith("```"):
-                    cleaned = cleaned.split("```")[1]
-                    if cleaned.startswith("json"):
-                        cleaned = cleaned[4:]
-
-                # Extract JSON block
-                start_idx = cleaned.find("{")
-                end_idx = cleaned.rfind("}") + 1
-                if start_idx != -1 and end_idx != -1:
-                    parsed_result = json.loads(cleaned[start_idx:end_idx])
+                try:
+                    parsed_result = extract_json_object(content_text)
                     parsed_result["engine"] = _friendly_model_name(self.model_id)
                     parsed_result["live_ai"] = True
                     return parsed_result
-                logger.warning("Bedrock response had no parseable JSON object; falling back.")
+                except ValueError:
+                    logger.warning("Bedrock response had no parseable JSON object; falling back.")
             except Exception as e:
                 logger.warning(f"Bedrock invocation exception: {e}. Falling back to deterministic optimization engine.")
 
@@ -108,6 +118,16 @@ class BedrockService:
             evaluation
         )
 
+    # AQI at which an outdoor period of this exertion level gets relocated indoors.
+    # Higher-exertion activities get a lower (more cautious) threshold.
+    HAZARD_THRESHOLD_BY_INTENSITY = {
+        "Extreme": 300,
+        "High": 250,
+        "Moderate": 250,
+        "Low": 250,
+        "Sedentary": 350,
+    }
+
     def _generate_resilient_optimized_schedule(
         self,
         original_schedule: List[Dict[str, Any]],
@@ -118,81 +138,54 @@ class BedrockService:
         """
         Deterministic, robust optimization engine that produces a high-fidelity
         optimized schedule conforming to medical and operational safety rules.
+
+        Driven entirely by each period's own attributes (is_outdoor, intensity,
+        activity_type) rather than hardcoded period_id numbers, so it applies
+        correctly to any school's schedule, not just the bundled sample one.
         """
         optimized_periods = []
         students_count = school_info.get("student_count", 850)
-        
+        indoor_venues = school_info.get("indoor_venues") or []
+
         total_avoided_mins = 0
         modifications_made = []
-        
+
         for period in original_schedule:
-            p_id = period["period_id"]
-            
-            if p_id == 1: # Morning Assembly
-                if current_aqi >= 250:
-                    optimized_periods.append({
-                        **period,
-                        "optimized_venue": "Multi-Purpose Auditorium & Classrooms PA System",
-                        "is_outdoor": False,
-                        "status": "RELOCATED_INDOORS",
-                        "safety_rationale": "Morning smog inversion traps ground-level particulates. Assembly broadcasted via PA system with HEPA filtration active.",
-                        "exposure_delta": f"Avoided {current_aqi} AQI outdoor exposure"
-                    })
-                    total_avoided_mins += period["duration_mins"]
-                    modifications_made.append("Morning Assembly shifted to indoor PA broadcast")
-                else:
-                    optimized_periods.append({**period, "status": "UNCHANGED", "optimized_venue": period["current_venue"]})
-                    
-            elif p_id == 3: # Primary Recess at 10:15 AM (Peak Smog Peak)
-                if current_aqi >= 250:
-                    # Swap with Period 6 (Quiet study in library) or move to Indoor Gym
-                    optimized_periods.append({
-                        **period,
-                        "name": "Indoor Activity & Quiet Refreshment Break",
-                        "optimized_venue": "Indoor Gymnasium & Air-Filtered Activity Hall",
-                        "is_outdoor": False,
-                        "status": "VENUE_SWAPPED",
-                        "safety_rationale": "Forecast peaks at 10:30 AM. Outdoor running halted to prevent deep lung PM2.5 deposition. Re-routed to indoor activity hall.",
-                        "exposure_delta": "Saved 40 mins of peak exertion in 380+ AQI air"
-                    })
-                    total_avoided_mins += period["duration_mins"]
-                    modifications_made.append("10:15 AM Recess moved to air-purified Indoor Gymnasium")
-                else:
-                    optimized_periods.append({**period, "status": "UNCHANGED", "optimized_venue": period["current_venue"]})
-                    
-            elif p_id == 5: # Sports / Football at 12:30 PM
-                if current_aqi >= 300:
-                    optimized_periods.append({
-                        **period,
-                        "name": "Tactical Video Analysis & Indoor Yoga/Stretching",
-                        "optimized_venue": "Indoor Sports Complex",
-                        "is_outdoor": False,
-                        "status": "ACTIVITY_MODIFIED",
-                        "safety_rationale": "Extreme cardio outdoor drills suspended. Converted to low-aerobic tactical analysis and indoor flexibility training.",
-                        "exposure_delta": "Saved 45 mins of extreme cardio in toxic air"
-                    })
-                    total_avoided_mins += period["duration_mins"]
-                    modifications_made.append("PE Football drills converted to indoor low-aerobic training")
-                else:
-                    optimized_periods.append({**period, "status": "UNCHANGED", "optimized_venue": period["current_venue"]})
-                    
-            elif p_id == 7: # Dispersal & Bus Boarding
+            is_transit = period.get("activity_type") == "Transit & Staging"
+
+            if not period["is_outdoor"] and not is_transit:
+                optimized_periods.append({**period, "status": "NORMAL_INDOOR", "optimized_venue": period["current_venue"]})
+                continue
+
+            if is_transit:
+                # Fume accumulation near idling vehicles is a hazard independent
+                # of outdoor exertion AQI thresholds, so this always applies.
                 optimized_periods.append({
                     **period,
-                    "name": "Staggered Indoor Gate Dispersal with N95 Mask Protocol",
-                    "optimized_venue": "Covered Corridors & Staggered Bus Bays",
-                    "is_outdoor": True,
+                    "name": f"{period['name']} (Staggered Dispersal)",
+                    "optimized_venue": f"Covered Corridors & Staggered {period['current_venue']}",
                     "status": "SAFETY_PROTOCOL_ENGAGED",
-                    "safety_rationale": "Staggered 5-minute class waves to prevent idling bus fumes accumulation near exit gates.",
-                    "exposure_delta": "Reduced transit exposure time by 50%"
+                    "safety_rationale": "Staggered class waves prevent idling-vehicle fume accumulation near exit points, independent of ambient AQI.",
+                    "exposure_delta": "Reduced transit exposure time by an estimated 50%"
                 })
-                modifications_made.append("Bus boarding staggered with active mask protocol")
-            else:
+                modifications_made.append(f"{period['name']} staggered with active mask protocol")
+                continue
+
+            threshold = self.HAZARD_THRESHOLD_BY_INTENSITY.get(period.get("intensity", "Moderate"), 250)
+            if current_aqi >= threshold:
+                indoor_venue = indoor_venues[0] if indoor_venues else "nearest indoor air-filtered facility"
                 optimized_periods.append({
                     **period,
-                    "status": "NORMAL_INDOOR",
-                    "optimized_venue": period["current_venue"]
+                    "optimized_venue": indoor_venue,
+                    "is_outdoor": False,
+                    "status": "RELOCATED_INDOORS",
+                    "safety_rationale": f"{period.get('intensity', 'Moderate')}-intensity outdoor activity exceeds the {threshold} AQI safety threshold for this exertion level; relocated to a filtered indoor space.",
+                    "exposure_delta": f"Avoided {current_aqi} AQI outdoor exposure during {period['duration_mins']} min of {period.get('intensity', 'moderate').lower()}-intensity activity"
                 })
+                total_avoided_mins += period["duration_mins"]
+                modifications_made.append(f"{period['name']} relocated indoors ({indoor_venue})")
+            else:
+                optimized_periods.append({**period, "status": "UNCHANGED", "optimized_venue": period["current_venue"]})
 
         student_hours_saved = round((students_count * total_avoided_mins) / 60.0, 1)
         est_pm25_avoided_mg = round((total_avoided_mins / 60.0) * (current_aqi * 0.015) * students_count, 1)

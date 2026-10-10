@@ -1126,6 +1126,21 @@ export default function App() {
                   <span>{reading.station_name}</span>
                 </div>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Ambient Air Quality</h3>
+                <div style={{ marginTop: 4 }}>
+                  {reading.is_cached ? (
+                    <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#f59e0b', background: 'rgba(245,158,11,0.15)', padding: '2px 7px', borderRadius: 20, border: '1px solid rgba(245,158,11,0.4)' }}>
+                      ⚠ CACHED — live feed unreachable, showing last known reading
+                    </span>
+                  ) : reading.is_simulated ? (
+                    <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#a855f7', background: 'rgba(168,85,247,0.15)', padding: '2px 7px', borderRadius: 20, border: '1px solid rgba(168,85,247,0.4)' }}>
+                      ⚡ SIMULATED — spike added for demo, not a real measurement
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#10b981', background: 'rgba(16,185,129,0.15)', padding: '2px 7px', borderRadius: 20, border: '1px solid rgba(16,185,129,0.4)' }}>
+                      ● LIVE
+                    </span>
+                  )}
+                </div>
               </div>
               <span className="badge-pill" style={{ background: `${aqiColor}22`, color: aqiColor, border: `1px solid ${aqiColor}55` }}>
                 {aqiLabel}

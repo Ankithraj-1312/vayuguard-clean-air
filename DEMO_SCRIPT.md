@@ -1,24 +1,92 @@
-# VayuGuard — 3-Minute Demo Video Script
+# VayuGuard — Demo Video Script (Scene-by-Scene)
 
-**Total runtime: 3:00 (hard limit per rules). Record in one take if possible; cut only at the marked breaks.**
+**Hard limit: 3:00 total.** Scene times are budgets, not exact cuts — leave a little air between scenes when you edit. Voiceover word counts assume ~150 words/minute (ElevenLabs' natural default pace); adjust the ElevenLabs speed slider if your generated clip runs long or short against the screen recording.
 
-| Time | Screen (what to show) | Voiceover (read this, word for word) |
-|---|---|---|
-| **0:00–0:20** | Split screen or quick cut: a news photo/clip of Delhi smog next to a generic AQI app showing just a number like "AQI 380." | *"Every winter, North Indian schools face this: an AQI number. Three hundred eighty. Nobody tells the principal what that means for today's schedule — so kids end up outside anyway, before anyone decides. That's the gap VayuGuard closes."* |
-| **0:20–0:45** | Cut to the live dashboard at your Amplify URL (`main.d3d19bldh9dql2.amplifyapp.com`). Point at the station name, AQI number, and the **green "● LIVE"** badge. | *"This is VayuGuard, running live right now. Not a mockup — this reading just came from a real government air quality station, fetched a few seconds ago. That LIVE badge matters: if the feed ever goes stale, it tells you honestly instead of guessing."* |
-| **0:45–1:15** | Trigger a scenario preset (the "Severe Winter Thermal Inversion" button). Show the AQI spike, then the schedule flip from outdoor to indoor venues, and the **"⚡ SIMULATED"** badge appearing. | *"Let's simulate a smog spike — clearly labeled simulated, never passed off as a real reading. Watch the schedule: morning assembly, recess, and PE all move indoors automatically, because the system knows exactly which activities are too risky at this exertion level, not just that the air is bad."* |
-| **1:15–1:35** | Show the triggered alert — open your email/phone and show the real SNS notification that arrived. | *"That re-optimization isn't just a UI change — it fired a real alert through Amazon SNS, the same second it happened. This is what a school admin or a parent would actually receive."* |
-| **1:35–2:00** | Switch to the AWS Console: show the CloudFormation stack `vayuguard` (status: UPDATE_COMPLETE), then the Lambda functions list, then the DynamoDB table with real items inside. | *"Here's where it actually runs: AWS Lambda behind API Gateway serves this entire backend, DynamoDB stores every real reading, and a scheduled EventBridge rule ingests fresh air quality data every fifteen minutes — even when nobody's watching."* |
-| **2:00–2:25** | Cut back to the dashboard, show the Bedrock engine badge (whatever it currently says — "Deterministic Safety Engine" if still blocked, or live model name if access came through). | *"The schedule logic is designed to call Amazon Bedrock for AI-driven optimization. [IF STILL BLOCKED: say this instead →] Right now this AWS account is under a new-account model access restriction, so it's running its documented fallback — and it tells you that honestly, right here, instead of pretending. [IF BEDROCK WORKS: say this instead →] And here — Bedrock just generated this schedule live, you can see the model name right there."* |
-| **2:25–2:45** | Show the "Honest Fallbacks" README section on screen (scroll to it), or the LIVE/CACHED/SIMULATED badges side by side if you have a second clip. | *"That's the core design decision behind VayuGuard: every fallback is visible, never silent. If the AI, the live feed, or anything else isn't working, the system says so — because an air-safety tool that lies about its own confidence is worse than one that's simply honest."* |
-| **2:45–3:00** | Final shot: dashboard showing the modifications summary / student-hours figure, then fade to a title card with the GitHub repo link. | *"VayuGuard: turning a number nobody acts on into a decision somebody actually makes — built, deployed, and running on AWS. Thank you."* |
+Generate each scene's voiceover as its own separate ElevenLabs clip (not one giant block) — it's much easier to resync one 20-second clip against its screen recording than to chop one 3-minute audio file into eight pieces.
 
 ---
 
-## Notes before you record
+## Scene 1 — The Problem (0:00–0:18, ~18s, 45 words)
 
-- **Pick the Bedrock line based on reality at recording time** — don't say both; the script has a bracket for each case. If it's still blocked, say so plainly; it's a strength (honesty), not a weakness to hide.
-- **Rehearse the 0:45–1:15 scenario trigger once off-camera first** — confirm the SNS email actually arrives within a few seconds before you record, so you're not waiting live.
-- **Keep a stopwatch visible** (phone or a second monitor) — going over 3:00 risks disqualifying that criterion entirely per the rules.
-- **Have the AWS Console tab pre-loaded and logged in** before recording, scrolled to the right place (CloudFormation stack page, Lambda list, DynamoDB table item view) so you're not fumbling navigation on camera.
-- **Say numbers out loud exactly as the UI shows them** — if the AQI reads 71, say 71, not a rounded "around 70." Precision reads as authenticity.
+**Screen:** Open on a static image or short clip of Delhi smog (a news photo works fine), then cut/transition to a plain screenshot of a generic AQI app showing just a bare number — something like "AQI: 380" with no other context. Hold each for about 2–3 seconds.
+
+**Voiceover:**
+> "Every winter, North Indian schools face this: an AQI number. Three hundred eighty. Nobody tells the principal what that means for today's schedule — so kids end up outside anyway, before anyone decides."
+
+---
+
+## Scene 2 — The Live Dashboard (0:18–0:40, ~22s, 55 words)
+
+**Screen:** Cut to your Amplify-hosted dashboard, already loaded (`main.d3d19bldh9dql2.amplifyapp.com`). Let the page sit for a beat so the viewer sees the real station name and AQI number render. Then move your cursor to point directly at the green **"● LIVE"** badge near the top of the AQI card. Hold on it for 2 seconds.
+
+**Voiceover:**
+> "This is VayuGuard, running live right now. Not a mockup — this reading just came from a real government air quality station, fetched moments ago. That LIVE badge matters: if the feed ever goes stale, it tells you honestly, instead of guessing."
+
+---
+
+## Scene 3 — Triggering a Hazard (0:40–1:10, ~30s, 75 words)
+
+**Screen:** Click the **"Severe Winter Thermal Inversion"** preset scenario button. Show the AQI number jumping upward in real time. Then scroll/pan to the schedule view and show the venue changes — outdoor periods (assembly, recess, PE) flipping to indoor venues. Point the cursor at the **"⚡ SIMULATED"** badge that appears once the spike is active.
+
+**Voiceover:**
+> "Let's simulate a smog spike — clearly labeled simulated, never passed off as a real reading. Watch the schedule: morning assembly, recess, and PE all move indoors automatically. Not just a generic 'air is bad' warning — the system knows exactly which activities are too risky at this exertion level, and which ones are still fine."
+
+---
+
+## Scene 4 — The Real Alert (1:10–1:30, ~20s, 50 words)
+
+**Screen:** Cut to your phone or your email inbox, showing the actual SNS notification that arrived from the scenario you just triggered. Zoom in on the subject line and message body so it's readable.
+
+**Voiceover:**
+> "That re-optimization isn't just a UI change — it fired a real alert through Amazon SNS, the same moment it happened. This is what a school admin, or a parent, would actually receive on their phone."
+
+---
+
+## Scene 5 — Proof It's on AWS (1:30–1:55, ~25s, 62 words)
+
+**Screen:** Switch to the AWS Console. Show, in order: the CloudFormation stack page for `vayuguard` (status should read `UPDATE_COMPLETE`), then the Lambda functions list filtered to "vayuguard," then the DynamoDB table `VayuGuardTelemetry` with real items open in the item explorer.
+
+**Voiceover:**
+> "Here's where it actually runs. AWS Lambda behind API Gateway serves this entire backend. DynamoDB stores every real reading, like these. And a scheduled EventBridge rule ingests fresh air quality data every fifteen minutes, even when nobody's watching the dashboard at all."
+
+---
+
+## Scene 6 — Bedrock Status (1:55–2:20, ~25s, 62 words)
+
+**Pick ONE version based on reality at recording time — do not record both.**
+
+**Screen (either version):** Cut back to the dashboard's optimization card, pointing at the engine name badge.
+
+**Voiceover — Version A, if Bedrock is still blocked:**
+> "The schedule logic is built to call Amazon Bedrock for AI-driven optimization. Right now, this AWS account is under a new-account model access restriction — so it's running its documented fallback engine instead, and it says so, right here, instead of pretending otherwise."
+
+**Voiceover — Version B, if Bedrock access comes through before you record:**
+> "And here — this schedule was just generated live by Amazon Bedrock. You can see the model name right there on screen. Not a canned response: a real call, with a real result, happening as we speak."
+
+---
+
+## Scene 7 — The Differentiator (2:20–2:45, ~25s, 62 words)
+
+**Screen:** Scroll to the README's "Honest Fallbacks" section on GitHub (or screen-record it locally), showing the table of LIVE / CACHED / SIMULATED states. Alternatively, quickly flash all three badges side by side if you have separate clips of each.
+
+**Voiceover:**
+> "That's the core design decision behind VayuGuard: every fallback is visible, never silent. If the AI, the live feed, or anything else isn't working, the system says so — because an air-safety tool that lies about its own confidence is worse than one that's simply honest."
+
+---
+
+## Scene 8 — Close (2:45–3:00, ~15s, 38 words)
+
+**Screen:** Final shot of the dashboard's summary card (modifications count, student-hours figure), then fade to a simple title card: project name, tagline, and the GitHub repo URL.
+
+**Voiceover:**
+> "VayuGuard: turning a number nobody acts on into a decision somebody actually makes — built, deployed, and running on AWS. Thank you."
+
+---
+
+## Before You Record / Generate
+
+- **Decide Scene 6's version first** — check Bedrock access one more time right before recording, then generate only that one voiceover clip.
+- **Rehearse the Scene 3 trigger once off-camera** — confirm the SNS email actually lands within a few seconds, so Scene 4's screenshot is ready to go rather than you waiting live on camera.
+- **Pre-load and pre-scroll every screen** named above before you start recording video — the Console pages especially, so there's no fumbling/searching on screen.
+- **Say numbers exactly as the UI shows them** when you narrate live, or when checking the AI-generated voiceover against the screen — if the AQI reads 71, the voiceover shouldn't say "around 70."
+- **Total check:** 18 + 22 + 30 + 20 + 25 + 25 + 25 + 15 = 180 seconds = exactly 3:00. Trim Scene 5 or 7 by a few seconds each if your edit runs long — those have the most slack.

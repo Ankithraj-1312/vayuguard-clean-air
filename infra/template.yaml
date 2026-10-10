@@ -107,6 +107,40 @@ Resources:
         - SNSPublishMessagePolicy:
             TopicName: !GetAtt VayuGuardAlertTopic.TopicName
 
+  # ─── 7. Lambda: Full FastAPI Backend (public HTTP API) ────────────
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../backend/
+      Handler: lambda_handler.handler
+      Timeout: 30
+      MemorySize: 512
+      Description: Public REST API for the VayuGuard dashboard (FastAPI via Mangum)
+      Environment:
+        Variables:
+          WAQI_TOKEN: !Ref WaqiToken
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref VayuGuardTable
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt VayuGuardAlertTopic.TopicName
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource: "*"
+      Events:
+        RootPath:
+          Type: HttpApi
+          Properties:
+            Path: /
+            Method: ANY
+        ProxyPath:
+          Type: HttpApi
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+
 Outputs:
   DynamoDBTableName:
     Description: DynamoDB Table Name
@@ -114,3 +148,6 @@ Outputs:
   SNSTopicArn:
     Description: SNS Topic ARN for Alerts
     Value: !Ref VayuGuardAlertTopic
+  ApiUrl:
+    Description: Public HTTPS endpoint for the VayuGuard backend API
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com"

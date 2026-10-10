@@ -7,7 +7,7 @@ import {
   X, Layers, Cpu, Database, Send
 } from 'lucide-react';
 
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
 const AUTO_REFRESH_SECONDS = 30;
 
 // ─── Station Network with Geo Coordinates ───────────────────────────

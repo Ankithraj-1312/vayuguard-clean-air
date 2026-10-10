@@ -32,6 +32,10 @@ wheels/
 .installed.cfg
 *.egg
 
+# AWS SAM build artifacts
+.aws-sam/
+samconfig.toml
+
 # Secrets & Environment Variables
 .env
 .env.local
